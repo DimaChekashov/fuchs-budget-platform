@@ -23,7 +23,7 @@ func main() {
 
 	log.Println("Connected to postgres!")
 
-	router := router.New(pool)
+	router := router.New(pool, config)
 
 	log.Printf("identity-service running on :%s\n", config.ServerPort)
 	log.Fatal(http.ListenAndServe(":"+config.ServerPort, router))

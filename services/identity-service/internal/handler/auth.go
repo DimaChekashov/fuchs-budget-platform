@@ -10,10 +10,11 @@ import (
 
 type AuthHandler struct {
 	userService *service.UserService
+	authService *service.AuthService
 }
 
-func NewAuthHandler(userService *service.UserService) *AuthHandler {
-	return &AuthHandler{userService: userService}
+func NewAuthHandler(userService *service.UserService, authService *service.AuthService) *AuthHandler {
+	return &AuthHandler{userService: userService, authService: authService}
 }
 
 type registerRequest struct {
@@ -59,8 +60,27 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{
-		"message": "login — coming soon",
+	var req loginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+
+	tokens, err := h.authService.Login(r.Context(), service.LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
 	})
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, tokens)
 }
