@@ -28,6 +28,7 @@ func New(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
 	mux.HandleFunc("POST /api/v1/auth/register", auth.Register)
 
+	mux.Handle("GET /api/v1/users/me", authMiddleware(http.HandlerFunc(user.Me)))
 	mux.Handle("GET /api/v1/users", authMiddleware(http.HandlerFunc(user.GetUsers)))
 
 	return mux
