@@ -1,7 +1,7 @@
 go 1.26.4
 
 use (
-	./pkg/logger
-	./services/identity-service
-	./services/wallet-service
+    ./services/identity-service
+    ./services/wallet-service
+    ./pkg/jwtmiddleware
 )

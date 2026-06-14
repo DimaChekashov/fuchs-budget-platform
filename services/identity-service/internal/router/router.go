@@ -3,9 +3,9 @@ package router
 import (
 	"net/http"
 
+	"github.com/DimaChekashov/fuchs-budget-platform/pkg/jwtmiddleware"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/config"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/handler"
-	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/middleware"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/repository"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,7 +22,7 @@ func New(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	auth := handler.NewAuthHandler(userService, authService)
 	user := handler.NewUserHandler(userService)
 
-	authMiddleware := middleware.Auth(authService)
+	authMiddleware := jwtmiddleware.Auth(cfg.JWTSecret)
 
 	mux.HandleFunc("GET /health", health.Health)
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)

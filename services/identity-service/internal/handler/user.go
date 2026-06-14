@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/middleware"
+	"github.com/DimaChekashov/fuchs-budget-platform/pkg/jwtmiddleware"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/service"
 )
 
@@ -22,12 +22,12 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(jwtmiddleware.UserIDKey).(string)
 	if !ok {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"erorr": "unauthorized"})
 	}
 
-	email, _ := r.Context().Value(middleware.EmailKey).(string)
+	email, _ := r.Context().Value(jwtmiddleware.EmailKey).(string)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id":    userID,

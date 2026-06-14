@@ -1,4 +1,4 @@
-package middleware
+package jwtmiddleware
 
 import (
 	"context"
@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type contextKey string
 
 const UserIDKey contextKey = "user_id"
+const EmailKey  contextKey = "email"
 
 func Auth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -23,19 +24,21 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			claims, err := parseToken(tokenString, jwtSecret)
+
+			claims, err := ParseToken(tokenString, jwtSecret)
 			if err != nil {
 				http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), UserIDKey, claims["sub"].(string))
+			ctx = context.WithValue(ctx, EmailKey, claims["email"])
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func parseToken(tokenString, secret string) (jwt.MapClaims, error) {
+func ParseToken(tokenString, secret string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -46,4 +49,14 @@ func parseToken(tokenString, secret string) (jwt.MapClaims, error) {
 		return nil, fmt.Errorf("invalid token")
 	}
 	return token.Claims.(jwt.MapClaims), nil
+}
+
+func GetUserID(r *http.Request) string {
+	id, _ := r.Context().Value(UserIDKey).(string)
+	return id
+}
+
+func GetEmail(r *http.Request) string {
+	email, _ := r.Context().Value(EmailKey).(string)
+	return email
 }

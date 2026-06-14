@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/middleware"
+	"github.com/DimaChekashov/fuchs-budget-platform/pkg/jwtmiddleware"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/service"
 	"github.com/google/uuid"
 )
@@ -133,7 +133,7 @@ func (h *WalletHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUserID(r *http.Request) uuid.UUID {
-	id, _ := r.Context().Value(middleware.UserIDKey).(string)
+	id := jwtmiddleware.GetUserID(r)
 	userID, _ := uuid.Parse(id)
 	return userID
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/DimaChekashov/fuchs-budget-platform/services/identity-service/internal/repository"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
