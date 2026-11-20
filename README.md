@@ -1,5 +1,7 @@
 # Fuchs Budget Platform
 
+Макеты интерфейса для телефонов, планшетов и компьютеров хранятся в [Figma](https://www.figma.com/design/1iKtvrot6yEFDtQF724XCe).
+
 [Архитектура бэкенда, фронтенда и монорепозитория](docs/architecture.md)
 
 ## Локальный бэкенд
