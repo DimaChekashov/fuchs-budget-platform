@@ -27,20 +27,31 @@ var (
 	ErrIdempotencyConflict = errors.New("idempotency key already used for a different operation")
 	ErrBalanceLimit        = errors.New("balance exceeds the supported limit")
 	ErrInvalidName         = errors.New("wallet name must contain 1 to 100 characters")
+	ErrCurrencyPrecision   = errors.New("amount exceeds the wallet currency precision")
 )
 
 type WalletService struct {
-	pool       *pgxpool.Pool
-	walletRepo *repository.WalletRepository
-	txnRepo    *repository.TransactionRepository
+	pool          *pgxpool.Pool
+	walletRepo    *repository.WalletRepository
+	txnRepo       *repository.TransactionRepository
+	checkCurrency CurrencyCheck
 }
 
-func NewWalletService(pool *pgxpool.Pool, walletRepo *repository.WalletRepository, txnRepo *repository.TransactionRepository) *WalletService {
-	return &WalletService{pool: pool, walletRepo: walletRepo, txnRepo: txnRepo}
+func NewWalletService(pool *pgxpool.Pool, walletRepo *repository.WalletRepository, txnRepo *repository.TransactionRepository, checkCurrency CurrencyCheck) *WalletService {
+	return &WalletService{pool: pool, walletRepo: walletRepo, txnRepo: txnRepo, checkCurrency: checkCurrency}
 }
 
-func (s *WalletService) CreateWallet(ctx context.Context, userID uuid.UUID, name, currency string) (*domain.Wallet, error) {
-	w := &domain.Wallet{UserID: userID, Name: name, Currency: currency}
+func (s *WalletService) CreateWallet(ctx context.Context, userID uuid.UUID, name, currency, authorization string) (*domain.Wallet, error) {
+	precision := 2
+	if s.checkCurrency != nil {
+		currency = strings.ToUpper(strings.TrimSpace(currency))
+		value, err := s.checkCurrency(ctx, currency, authorization)
+		if err != nil {
+			return nil, err
+		}
+		precision = value
+	}
+	w := &domain.Wallet{UserID: userID, Name: name, Currency: currency, CurrencyPrecision: precision}
 	if err := s.walletRepo.Create(ctx, w); err != nil {
 		return nil, fmt.Errorf("create wallet: %w", err)
 	}
@@ -113,8 +124,13 @@ func (s *WalletService) record(ctx context.Context, input OperationInput, kind d
 		Description: input.Description,
 	}
 	err = pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
-		if err := s.lockWallet(ctx, tx, input); err != nil {
+		precision, err := s.lockWallet(ctx, tx, input)
+		if err != nil {
 			return err
+		}
+		fraction := string(amount)[len(amount)-2:]
+		if len(strings.TrimRight(fraction, "0")) > precision {
+			return ErrCurrencyPrecision
 		}
 		if input.IdempotencyKey != nil {
 			previous, err := s.txnRepo.GetByKey(ctx, tx, input.WalletID, *input.IdempotencyKey)
@@ -156,19 +172,19 @@ func (s *WalletService) record(ctx context.Context, input OperationInput, kind d
 	return operation, nil
 }
 
-func (s *WalletService) lockWallet(ctx context.Context, tx pgx.Tx, input OperationInput) error {
-	err := s.walletRepo.LockOwned(ctx, tx, input.WalletID, input.UserID)
+func (s *WalletService) lockWallet(ctx context.Context, tx pgx.Tx, input OperationInput) (int, error) {
+	precision, err := s.walletRepo.LockOwned(ctx, tx, input.WalletID, input.UserID)
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return err
+		return precision, err
 	}
 	exists, err := s.walletRepo.Exists(ctx, tx, input.WalletID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if exists {
-		return ErrWrongOwner
+		return 0, ErrWrongOwner
 	}
-	return ErrWalletNotFound
+	return 0, ErrWalletNotFound
 }
 
 func parseAmount(raw json.RawMessage) (json.Number, error) {

@@ -16,7 +16,7 @@ func New(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 
 	walletRepository := repository.NewWalletRepository(pool)
 	transactionRepository := repository.NewTransactionRepository(pool)
-	walletService := service.NewWalletService(pool, walletRepository, transactionRepository)
+	walletService := service.NewWalletService(pool, walletRepository, transactionRepository, service.ExchangeCurrencyCheck(cfg.ExchangeURL))
 	walletHandler := handler.NewWalletHandler(walletService)
 
 	auth := jwtmiddleware.Auth(cfg.JWTSecret)

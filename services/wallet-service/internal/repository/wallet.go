@@ -20,21 +20,22 @@ func NewWalletRepository(pool *pgxpool.Pool) *WalletRepository {
 
 func (r *WalletRepository) Create(ctx context.Context, w *domain.Wallet) error {
 	query := `
-		INSERT INTO wallets (user_id, name, currency)
-		VALUES ($1, $2, $3)
+		INSERT INTO wallets (user_id, name, currency, currency_precision)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, balance::text, created_at, updated_at
 	`
 	var balance string
-	err := r.pool.QueryRow(ctx, query, w.UserID, w.Name, w.Currency).
+	err := r.pool.QueryRow(ctx, query, w.UserID, w.Name, w.Currency, w.CurrencyPrecision).
 		Scan(&w.ID, &balance, &w.CreatedAt, &w.UpdatedAt)
 	w.Balance = json.Number(balance)
 	return err
 }
 
-func (r *WalletRepository) LockOwned(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) error {
-	var lockedID uuid.UUID
-	return tx.QueryRow(ctx, `SELECT id FROM wallets WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).
-		Scan(&lockedID)
+func (r *WalletRepository) LockOwned(ctx context.Context, tx pgx.Tx, id, userID uuid.UUID) (int, error) {
+	var precision int
+	err := tx.QueryRow(ctx, `SELECT currency_precision FROM wallets WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).
+		Scan(&precision)
+	return precision, err
 }
 
 func (r *WalletRepository) Exists(ctx context.Context, tx pgx.Tx, id uuid.UUID) (bool, error) {
@@ -45,27 +46,27 @@ func (r *WalletRepository) Exists(ctx context.Context, tx pgx.Tx, id uuid.UUID) 
 
 func (r *WalletRepository) GetOwned(ctx context.Context, id, userID uuid.UUID) (*domain.Wallet, error) {
 	return scanWallet(r.pool.QueryRow(ctx, `
-		SELECT id, user_id, name, currency, balance::text, created_at, updated_at
+		SELECT id, user_id, name, currency, currency_precision, balance::text, created_at, updated_at
 		FROM wallets WHERE id = $1 AND user_id = $2`, id, userID))
 }
 
 func (r *WalletRepository) Rename(ctx context.Context, id, userID uuid.UUID, name string) (*domain.Wallet, error) {
 	return scanWallet(r.pool.QueryRow(ctx, `
 		UPDATE wallets SET name = $3, updated_at = NOW() WHERE id = $1 AND user_id = $2
-		RETURNING id, user_id, name, currency, balance::text, created_at, updated_at`, id, userID, name))
+		RETURNING id, user_id, name, currency, currency_precision, balance::text, created_at, updated_at`, id, userID, name))
 }
 
 func scanWallet(row pgx.Row) (*domain.Wallet, error) {
 	w := &domain.Wallet{}
 	var balance string
-	err := row.Scan(&w.ID, &w.UserID, &w.Name, &w.Currency, &balance, &w.CreatedAt, &w.UpdatedAt)
+	err := row.Scan(&w.ID, &w.UserID, &w.Name, &w.Currency, &w.CurrencyPrecision, &balance, &w.CreatedAt, &w.UpdatedAt)
 	w.Balance = json.Number(balance)
 	return w, err
 }
 
 func (r *WalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Wallet, error) {
 	query := `
-		SELECT id, user_id, name, currency, balance::text, created_at, updated_at
+		SELECT id, user_id, name, currency, currency_precision, balance::text, created_at, updated_at
 		FROM wallets WHERE user_id = $1
 		ORDER BY created_at DESC
 	`

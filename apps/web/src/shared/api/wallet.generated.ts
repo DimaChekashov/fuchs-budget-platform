@@ -104,6 +104,7 @@ export interface components {
             UserID: string;
             Name: string;
             Currency: string;
+            CurrencyPrecision: number;
             Balance: number;
             /** Format: date-time */
             CreatedAt: string;
@@ -172,7 +173,7 @@ export interface components {
                 "application/json": {
                     /** Format: uuid */
                     wallet_id: string;
-                    /** @description Positive decimal value in the wallet currency using up to two fractional digits of precision. */
+                    /** @description Positive decimal value in the wallet currency. Precision is limited by the wallet and by the two-digit API maximum. */
                     amount: number;
                     description?: string;
                 };
@@ -235,6 +236,15 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Unauthorized"];
             500: components["responses"]["Error"];
+            /** @description Currency catalog temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     deposit: {

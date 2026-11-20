@@ -1,17 +1,17 @@
 import type { components } from "@/shared/api/wallet.generated";
 import type { Language } from "@/shared/i18n";
 
-export type Wallet = components["schemas"]["Wallet"];
-export type Transaction = components["schemas"]["Transaction"];
+export type Wallet = Omit<components["schemas"]["Wallet"], "Balance"> & { Balance: string };
+export type Transaction = Omit<components["schemas"]["Transaction"], "Amount"> & { Amount: string };
 
-export function money(amount: number | string, currency: string, language: Language) {
+export function money(amount: number | string, currency: string, language: Language, precision = 2) {
   return new Intl.NumberFormat(language, {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
+    maximumFractionDigits: precision,
+    minimumFractionDigits: precision,
     style: /^[A-Za-z]{3}$/.test(currency) ? "currency" : "decimal",
     currency: /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : undefined,
     currencyDisplay: "code",
-  }).format(amount as number) + (/^[A-Za-z]{3}$/.test(currency) ? "" : " " + currency);
+  }).format(amount as number | `${number}`) + (/^[A-Za-z]{3}$/.test(currency) ? "" : " " + currency);
 }
 
 export function dateTime(time: string, language: Language) {

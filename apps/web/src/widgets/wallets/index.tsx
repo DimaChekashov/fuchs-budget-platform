@@ -10,7 +10,7 @@ export default function Wallets({ wallets, language }: { wallets: Wallet[]; lang
       <article className="wallet-card" key={wallet.ID}>
         <div className="wallet-top"><span className="wallet-name">{wallet.Name}</span><span className="currency">{wallet.Currency}</span></div>
         <span className="balance-label">{t.balance}</span>
-        <strong className="balance">{money(wallet.Balance, wallet.Currency, language)}</strong>
+        <strong className="balance">{money(wallet.Balance, wallet.Currency, language, wallet.CurrencyPrecision)}</strong>
         <Link className="text-link" href={"/" + language + "/wallets/" + wallet.ID + "/edit"}>{t.editWallet}</Link>
       </article>
     ))}

@@ -39,5 +39,10 @@ export async function readAPI<T>(service: Service, path: string, language: Langu
   }
   if (response.status === 401) redirect("/" + language + "/login");
   if (!response.ok) throw new APIError(response.status);
+  if (service === "wallet") {
+    // Preserve the original JSON number for money values beyond IEEE-754 precision.
+    return JSON.parse(await response.text(), (key, value: unknown, context?: { source?: string }) =>
+      (key === "Balance" || key === "Amount") && typeof value === "number" ? context?.source ?? String(value) : value) as T;
+  }
   return response.json() as Promise<T>;
 }

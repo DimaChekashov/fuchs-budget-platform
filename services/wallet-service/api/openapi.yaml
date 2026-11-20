@@ -43,6 +43,11 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/Error' }
+        '503':
+          description: Currency catalog temporarily unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /api/v1/wallets/deposit:
     post:
       operationId: deposit
@@ -171,7 +176,7 @@ components:
                 minimum: 0.01
                 maximum: 9999999999999999.99
                 multipleOf: 0.01
-                description: Positive decimal value in the wallet currency using up to two fractional digits of precision.
+                description: Positive decimal value in the wallet currency. Precision is limited by the wallet and by the two-digit API maximum.
               description: { type: string, maxLength: 255 }
   responses:
     Wallet:
@@ -202,12 +207,13 @@ components:
         error: { type: string }
     Wallet:
       type: object
-      required: [ID, UserID, Name, Currency, Balance, CreatedAt, UpdatedAt]
+      required: [ID, UserID, Name, Currency, CurrencyPrecision, Balance, CreatedAt, UpdatedAt]
       properties:
         ID: { type: string, format: uuid }
         UserID: { type: string, format: uuid }
         Name: { type: string }
         Currency: { type: string }
+        CurrencyPrecision: { type: integer, minimum: 0, maximum: 2 }
         Balance: { type: number }
         CreatedAt: { type: string, format: date-time }
         UpdatedAt: { type: string, format: date-time }

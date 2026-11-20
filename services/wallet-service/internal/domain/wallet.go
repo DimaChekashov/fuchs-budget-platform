@@ -8,11 +8,12 @@ import (
 )
 
 type Wallet struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	Name      string
-	Currency  string
-	Balance   json.Number
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Name              string
+	Currency          string
+	CurrencyPrecision int
+	Balance           json.Number
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }

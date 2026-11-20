@@ -15,7 +15,10 @@ export default async function PrivateLayout({ children, params }: LayoutProps<"/
   return <div className="shell">
     <aside className="sidebar">
       <Link className="home-link" href={root}><Brand /></Link>
-      <nav className="menu" aria-label={t.dashboard}><Link href={root}>{t.dashboard}</Link></nav>
+      <nav className="menu" aria-label={t.dashboard}>
+        <Link href={root}>{t.dashboard}</Link>
+        <Link href={root + "/rates"}>{t.rates}</Link>
+      </nav>
       <div className="account"><span title={profile.email}>{profile.email}</span>
         <ActionForm language={locale} label={t.logout} endpoint="logout" destination={root + "/login"} />
       </div>

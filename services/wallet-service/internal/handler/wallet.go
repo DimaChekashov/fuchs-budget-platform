@@ -48,9 +48,16 @@ func (h *WalletHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 		req.Currency = "RUB"
 	}
 
-	wallet, err := h.walletService.CreateWallet(r.Context(), userID, req.Name, req.Currency)
+	wallet, err := h.walletService.CreateWallet(r.Context(), userID, req.Name, req.Currency, r.Header.Get("Authorization"))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		switch {
+		case errors.Is(err, service.ErrUnknownCurrency):
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		case errors.Is(err, service.ErrCurrencyUnavailable):
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "currency catalog unavailable"})
+		default:
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		}
 		return
 	}
 	writeJSON(w, http.StatusCreated, wallet)
@@ -97,7 +104,7 @@ func (h *WalletHandler) record(w http.ResponseWriter, r *http.Request, run func(
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidAmount), errors.Is(err, service.ErrInvalidKey),
-			errors.Is(err, service.ErrInsufficientFunds), errors.Is(err, service.ErrBalanceLimit):
+			errors.Is(err, service.ErrInsufficientFunds), errors.Is(err, service.ErrBalanceLimit), errors.Is(err, service.ErrCurrencyPrecision):
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		case errors.Is(err, service.ErrWalletNotFound):
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "wallet not found"})

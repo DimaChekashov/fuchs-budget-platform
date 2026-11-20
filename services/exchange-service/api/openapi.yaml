@@ -1,0 +1,121 @@
+openapi: 3.0.3
+info:
+  title: Fuchs Exchange API
+  version: '1'
+servers:
+  - url: http://localhost:8083
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: Database ready.
+        '503':
+          description: Database unavailable.
+  /api/v1/currencies:
+    get:
+      operationId: listCurrencies
+      responses:
+        '200':
+          description: Standard currencies and custom currencies owned by this user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Currency' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: addCurrency
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Currency' }
+      responses:
+        '201':
+          description: Created user currency.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Currency' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/currencies/{code}:
+    get:
+      operationId: getCurrency
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z][A-Za-z0-9]{2,9}$' }
+      responses:
+        '200':
+          description: Currency visible to the current user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Currency' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/rates:
+    get:
+      operationId: listRates
+      parameters:
+        - name: base
+          in: query
+          schema: { type: string, default: RUB, pattern: '^[A-Za-z][A-Za-z0-9]{2,9}$' }
+      responses:
+        '200':
+          description: Most recent stored observation per quote currency. An empty array means no rates are available.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Rate' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        text/plain:
+          schema: { type: string }
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Error:
+      description: Request failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Currency:
+      type: object
+      required: [code, precision]
+      properties:
+        code: { type: string, pattern: '^[A-Za-z][A-Za-z0-9]{2,9}$' }
+        precision: { type: integer, minimum: 0, maximum: 2 }
+    Rate:
+      type: object
+      required: [base, quote, date, rate, source]
+      properties:
+        base: { type: string }
+        quote: { type: string }
+        date: { type: string, format: date }
+        rate: { type: string, description: Exact decimal reference rate }
+        source: { type: string }
