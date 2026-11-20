@@ -31,14 +31,24 @@ var (
 )
 
 type WalletService struct {
-	pool          *pgxpool.Pool
-	walletRepo    *repository.WalletRepository
-	txnRepo       *repository.TransactionRepository
-	checkCurrency CurrencyCheck
+	pool            *pgxpool.Pool
+	walletRepo      *repository.WalletRepository
+	transactionRepo *repository.TransactionRepository
+	checkCurrency   CurrencyCheck
 }
 
-func NewWalletService(pool *pgxpool.Pool, walletRepo *repository.WalletRepository, txnRepo *repository.TransactionRepository, checkCurrency CurrencyCheck) *WalletService {
-	return &WalletService{pool: pool, walletRepo: walletRepo, txnRepo: txnRepo, checkCurrency: checkCurrency}
+func NewWalletService(
+	pool *pgxpool.Pool,
+	walletRepo *repository.WalletRepository,
+	transactionRepo *repository.TransactionRepository,
+	checkCurrency CurrencyCheck,
+) *WalletService {
+	return &WalletService{
+		pool:            pool,
+		walletRepo:      walletRepo,
+		transactionRepo: transactionRepo,
+		checkCurrency:   checkCurrency,
+	}
 }
 
 func (s *WalletService) CreateWallet(ctx context.Context, userID uuid.UUID, name, currency, authorization string) (*domain.Wallet, error) {
@@ -51,11 +61,11 @@ func (s *WalletService) CreateWallet(ctx context.Context, userID uuid.UUID, name
 		}
 		precision = value
 	}
-	w := &domain.Wallet{UserID: userID, Name: name, Currency: currency, CurrencyPrecision: precision}
-	if err := s.walletRepo.Create(ctx, w); err != nil {
+	wallet := &domain.Wallet{UserID: userID, Name: name, Currency: currency, CurrencyPrecision: precision}
+	if err := s.walletRepo.Create(ctx, wallet); err != nil {
 		return nil, fmt.Errorf("create wallet: %w", err)
 	}
-	return w, nil
+	return wallet, nil
 }
 
 func (s *WalletService) GetUserWallets(ctx context.Context, userID uuid.UUID) ([]*domain.Wallet, error) {
@@ -86,7 +96,7 @@ func (s *WalletService) GetHistory(ctx context.Context, walletID, userID uuid.UU
 	if _, err := s.GetWallet(ctx, walletID, userID); err != nil {
 		return nil, err
 	}
-	return s.txnRepo.GetHistory(ctx, walletID, userID, offset)
+	return s.transactionRepo.GetHistory(ctx, walletID, userID, offset)
 }
 
 type OperationInput struct {
@@ -133,7 +143,7 @@ func (s *WalletService) record(ctx context.Context, input OperationInput, kind d
 			return ErrCurrencyPrecision
 		}
 		if input.IdempotencyKey != nil {
-			previous, err := s.txnRepo.GetByKey(ctx, tx, input.WalletID, *input.IdempotencyKey)
+			previous, err := s.transactionRepo.GetByKey(ctx, tx, input.WalletID, *input.IdempotencyKey)
 			switch {
 			case err == nil:
 				if previous.Type != kind || previous.Amount != amount || previous.Description != input.Description {
@@ -161,7 +171,7 @@ func (s *WalletService) record(ctx context.Context, input OperationInput, kind d
 		if !updated {
 			return ErrInsufficientFunds
 		}
-		if err := s.txnRepo.Create(ctx, tx, operation, input.IdempotencyKey); err != nil {
+		if err := s.transactionRepo.Create(ctx, tx, operation, input.IdempotencyKey); err != nil {
 			return fmt.Errorf("create transaction: %w", err)
 		}
 		return nil
@@ -193,8 +203,8 @@ func parseAmount(raw json.RawMessage) (json.Number, error) {
 		return "", ErrInvalidAmount
 	}
 	// Bound the exponent before passing it to big.Rat, which can allocate based on it.
-	if i := strings.IndexAny(value, "eE"); i >= 0 {
-		exponent, err := strconv.Atoi(value[i+1:])
+	if exponentIndex := strings.IndexAny(value, "eE"); exponentIndex >= 0 {
+		exponent, err := strconv.Atoi(value[exponentIndex+1:])
 		if err != nil || exponent < -128 || exponent > 128 {
 			return "", ErrInvalidAmount
 		}

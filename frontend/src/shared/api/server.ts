@@ -10,11 +10,19 @@ const upstreams = {
 };
 export type Service = keyof typeof upstreams;
 export const SESSION = "fuchs_session";
-export async function upstream(service: Service, path: string, options?: RequestInit, token?: string) {
+export async function upstream(
+  service: Service,
+  path: string,
+  options?: RequestInit,
+  token?: string,
+) {
   const headers = new Headers(options?.headers);
   if (token) headers.set("Authorization", "Bearer " + token);
   return fetch(new URL(path, upstreams[service]), {
-    ...options, headers, cache: "no-store", signal: AbortSignal.timeout(5000),
+    ...options,
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(5000),
   });
 }
 
@@ -41,8 +49,13 @@ export async function readAPI<T>(service: Service, path: string, language: Langu
   if (!response.ok) throw new APIError(response.status);
   if (service === "wallet") {
     // Preserve the original JSON number for money values beyond IEEE-754 precision.
-    return JSON.parse(await response.text(), (key, value: unknown, context?: { source?: string }) =>
-      (key === "Balance" || key === "Amount") && typeof value === "number" ? context?.source ?? String(value) : value) as T;
+    return JSON.parse(
+      await response.text(),
+      (key, value: unknown, context?: { source?: string }) =>
+        (key === "Balance" || key === "Amount") && typeof value === "number"
+          ? (context?.source ?? String(value))
+          : value,
+    ) as T;
   }
   return response.json() as Promise<T>;
 }

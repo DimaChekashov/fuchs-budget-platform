@@ -68,14 +68,14 @@ func consume(ctx context.Context, brokers []string, topic string, store Projecti
 		}
 		record := records.Next()
 		event, err := decode(record.Value)
-		work, cancel := context.WithTimeout(ctx, 10*time.Second)
+		processingContext, cancel := context.WithTimeout(ctx, 10*time.Second)
 		if err != nil {
-			err = store.Reject(work, record.Topic, record.Partition, record.Offset, err.Error())
+			err = store.Reject(processingContext, record.Topic, record.Partition, record.Offset, err.Error())
 		} else {
-			err = store.Apply(work, event)
+			err = store.Apply(processingContext, event)
 		}
 		if err == nil {
-			err = client.CommitRecords(work, record)
+			err = client.CommitRecords(processingContext, record)
 		}
 		cancel()
 		if err != nil {

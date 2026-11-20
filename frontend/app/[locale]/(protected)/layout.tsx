@@ -10,19 +10,31 @@ export default async function PrivateLayout({ children, params }: LayoutProps<"/
   if (!isLanguage(locale)) notFound();
   const profile = await apiProfile(locale);
   if (!profile) redirect("/" + locale + "/login");
-  const t = dictionary(locale);
+  const labels = dictionary(locale);
   const root = "/" + locale;
-  return <div className="shell">
-    <aside className="sidebar">
-      <Link className="home-link" href={root}><Brand /></Link>
-      <nav className="menu" aria-label={t.dashboard}>
-        <Link href={root}>{t.dashboard}</Link>
-        <Link href={root + "/rates"}>{t.rates}</Link>
-      </nav>
-      <div className="account"><span title={profile.email}>{profile.email}</span>
-        <ActionForm language={locale} label={t.logout} endpoint="logout" destination={root + "/login"} />
-      </div>
-    </aside>
-    <main className="workspace" id="content">{children}</main>
-  </div>;
+  return (
+    <div className="shell">
+      <aside className="sidebar">
+        <Link className="home-link" href={root}>
+          <Brand />
+        </Link>
+        <nav className="menu" aria-label={labels.dashboard}>
+          <Link href={root}>{labels.dashboard}</Link>
+          <Link href={root + "/rates"}>{labels.rates}</Link>
+        </nav>
+        <div className="account">
+          <span title={profile.email}>{profile.email}</span>
+          <ActionForm
+            language={locale}
+            label={labels.logout}
+            endpoint="logout"
+            destination={root + "/login"}
+          />
+        </div>
+      </aside>
+      <main className="workspace" id="content">
+        {children}
+      </main>
+    </div>
+  );
 }

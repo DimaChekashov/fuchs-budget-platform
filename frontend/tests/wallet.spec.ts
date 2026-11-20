@@ -12,7 +12,9 @@ test("registers, signs in, edits a wallet and records money", async ({ page, con
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Your wallets" })).toBeVisible();
-  expect((await context.cookies()).find((cookie) => cookie.name === "fuchs_session")?.httpOnly).toBe(true);
+  expect(
+    (await context.cookies()).find((cookie) => cookie.name === "fuchs_session")?.httpOnly,
+  ).toBe(true);
   await page.getByRole("link", { name: "New wallet" }).click();
   await page.getByLabel("Wallet name").fill("Cash");
   await page.getByRole("button", { name: "Save" }).click();
@@ -47,16 +49,30 @@ test("registers, signs in, edits a wallet and records money", async ({ page, con
   await page.getByLabel("Currency code").fill("TST");
   await page.getByLabel("Fractional digits").selectOption("0");
   await page.getByRole("button", { name: "Add currency" }).click();
-  await expect(page.getByLabel("Base currency").getByRole("option", { name: "TST" })).toBeAttached();
+  await expect(
+    page.getByLabel("Base currency").getByRole("option", { name: "TST" }),
+  ).toBeAttached();
   await page.getByRole("link", { name: "Dashboard" }).click();
   await page.getByRole("link", { name: "New wallet" }).click();
   await page.getByLabel("Wallet name").fill("Whole units");
   await page.getByLabel("Currency").selectOption("TST");
   await page.getByRole("button", { name: "Save" }).click();
-  await page.getByRole("article").filter({ hasText: "Whole units" }).getByRole("link", { name: "Edit wallet" }).click();
-  await page.getByRole("region", { name: "Deposit" }).getByLabel(/Amount/).fill("1.01");
-  await page.getByRole("region", { name: "Deposit" }).getByRole("button", { name: "Deposit" }).click();
-  await expect(page.getByText("Couldn't save your changes. Check the details and try again.")).toBeVisible();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Whole units" })
+    .getByRole("link", { name: "Edit wallet" })
+    .click();
+  await page
+    .getByRole("region", { name: "Deposit" })
+    .getByLabel(/Amount/)
+    .fill("1.01");
+  await page
+    .getByRole("region", { name: "Deposit" })
+    .getByRole("button", { name: "Deposit" })
+    .click();
+  await expect(
+    page.getByText("Couldn't save your changes. Check the details and try again."),
+  ).toBeVisible();
   await page.goto(walletPath);
 
   await page.getByRole("link", { name: "RU", exact: true }).click();

@@ -18,16 +18,16 @@ func NewWalletRepository(pool *pgxpool.Pool) *WalletRepository {
 	return &WalletRepository{pool: pool}
 }
 
-func (r *WalletRepository) Create(ctx context.Context, w *domain.Wallet) error {
+func (r *WalletRepository) Create(ctx context.Context, wallet *domain.Wallet) error {
 	query := `
 		INSERT INTO wallets (user_id, name, currency, currency_precision)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, balance::text, created_at, updated_at
 	`
 	var balance string
-	err := r.pool.QueryRow(ctx, query, w.UserID, w.Name, w.Currency, w.CurrencyPrecision).
-		Scan(&w.ID, &balance, &w.CreatedAt, &w.UpdatedAt)
-	w.Balance = json.Number(balance)
+	err := r.pool.QueryRow(ctx, query, wallet.UserID, wallet.Name, wallet.Currency, wallet.CurrencyPrecision).
+		Scan(&wallet.ID, &balance, &wallet.CreatedAt, &wallet.UpdatedAt)
+	wallet.Balance = json.Number(balance)
 	return err
 }
 
@@ -57,11 +57,11 @@ func (r *WalletRepository) Rename(ctx context.Context, id, userID uuid.UUID, nam
 }
 
 func scanWallet(row pgx.Row) (*domain.Wallet, error) {
-	w := &domain.Wallet{}
+	wallet := &domain.Wallet{}
 	var balance string
-	err := row.Scan(&w.ID, &w.UserID, &w.Name, &w.Currency, &w.CurrencyPrecision, &balance, &w.CreatedAt, &w.UpdatedAt)
-	w.Balance = json.Number(balance)
-	return w, err
+	err := row.Scan(&wallet.ID, &wallet.UserID, &wallet.Name, &wallet.Currency, &wallet.CurrencyPrecision, &balance, &wallet.CreatedAt, &wallet.UpdatedAt)
+	wallet.Balance = json.Number(balance)
+	return wallet, err
 }
 
 func (r *WalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Wallet, error) {
@@ -78,11 +78,11 @@ func (r *WalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([
 
 	var wallets []*domain.Wallet
 	for rows.Next() {
-		w, err := scanWallet(rows)
+		wallet, err := scanWallet(rows)
 		if err != nil {
 			return nil, err
 		}
-		wallets = append(wallets, w)
+		wallets = append(wallets, wallet)
 	}
 	return wallets, rows.Err()
 }
