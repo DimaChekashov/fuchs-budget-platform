@@ -35,6 +35,13 @@ test("registers, signs in, edits a wallet and records money", async ({ page, con
   await expect(page.getByText("Payday")).toBeVisible();
 
   const walletPath = new URL(page.url()).pathname;
+  await page.goto("/en");
+  await expect(async () => {
+    await page.reload();
+    const report = page.getByRole("region", { name: "Income and expenses" });
+    await expect(report.getByRole("cell", { name: /RUB\s+12\.35/ })).toBeVisible({ timeout: 500 });
+    await expect(report.getByRole("cell", { name: /RUB\s+2\.10/ })).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 25000 });
   await page.getByRole("link", { name: "Exchange rates" }).click();
   await expect(page.getByRole("heading", { name: "Exchange rates" })).toBeVisible();
   await page.getByLabel("Currency code").fill("TST");

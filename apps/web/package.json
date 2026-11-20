@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "generate:api": "openapi-typescript ../../services/identity-service/api/openapi.yaml -o src/shared/api/identity.generated.ts && openapi-typescript ../../services/wallet-service/api/openapi.yaml -o src/shared/api/wallet.generated.ts && openapi-typescript ../../services/exchange-service/api/openapi.yaml -o src/shared/api/exchange.generated.ts",
+    "generate:api": "openapi-typescript ../../services/identity-service/api/openapi.yaml -o src/shared/api/identity.generated.ts && openapi-typescript ../../services/wallet-service/api/openapi.yaml -o src/shared/api/wallet.generated.ts && openapi-typescript ../../services/exchange-service/api/openapi.yaml -o src/shared/api/exchange.generated.ts && openapi-typescript ../../services/ledger-service/api/openapi.yaml -o src/shared/api/ledger.generated.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

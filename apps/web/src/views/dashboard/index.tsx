@@ -2,9 +2,11 @@ import Link from "next/link";
 import type { Wallet } from "@/entities/wallet";
 import { APIError, readAPI } from "@/shared/api/server";
 import Wallets from "@/widgets/wallets";
+import ReportSummary from "@/widgets/report";
+import type { ReportFilters } from "@/entities/report/server";
 import { dictionary, type Language } from "@/shared/i18n";
 
-export default async function Dashboard({ language }: { language: Language }) {
+export default async function Dashboard({ language, filters }: { language: Language; filters: ReportFilters }) {
   const t = dictionary(language);
   let wallets: Wallet[] | "error";
   try {
@@ -17,6 +19,9 @@ export default async function Dashboard({ language }: { language: Language }) {
     <header className="page-heading"><h1>{t.heading}</h1>
       <Link className="button" href={"/" + language + "/wallets/new"}>{t.newWallet}</Link>
     </header>
-    {wallets === "error" ? <p role="status">{t.unavailable}</p> : <Wallets language={language} wallets={wallets} />}
+    <div className="dashboard-grid">
+      {wallets === "error" ? <p role="status">{t.unavailable}</p> : <Wallets language={language} wallets={wallets} />}
+      <ReportSummary language={language} filters={filters} wallets={wallets === "error" ? [] : wallets} />
+    </div>
   </>;
 }

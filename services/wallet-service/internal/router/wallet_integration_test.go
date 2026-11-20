@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/config"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/domain"
+	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/outbox"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -157,6 +159,39 @@ func TestMoneyOperations(t *testing.T) {
 			t.Fatalf("unexpected later page: %s", end.Body)
 		}
 	})
+
+	t.Run("backfills the journal and retries when the broker is unavailable", func(t *testing.T) {
+		var historicalID string
+		err := pool.QueryRow(t.Context(), `
+			SELECT t.id::text FROM transactions t JOIN wallets w ON w.id = t.wallet_id
+			WHERE w.name = 'Historical fixture'`).Scan(&historicalID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		unavailable := errors.New("broker unavailable")
+		relay := outbox.Relay{Pool: pool, Publish: func(_ context.Context, _ uuid.UUID, _ []byte) error {
+			return unavailable
+		}}
+		if published, err := relay.Next(t.Context()); published || !errors.Is(err, unavailable) {
+			t.Fatalf("unexpected failed publication result: %t, %v", published, err)
+		}
+		relay.Publish = func(_ context.Context, _ uuid.UUID, body []byte) error {
+			var event struct {
+				ID     string `json:"operation_id"`
+				Amount string `json:"amount"`
+			}
+			if err := json.Unmarshal(body, &event); err != nil {
+				return err
+			}
+			if event.ID != historicalID || event.Amount != "8.40" {
+				return fmt.Errorf("incorrect historical event: %+v", event)
+			}
+			return nil
+		}
+		if published, err := relay.Next(t.Context()); !published || err != nil {
+			t.Fatalf("historical operation was not retried: %t, %v", published, err)
+		}
+	})
 }
 
 func migratedPool(t *testing.T, dsn string) *pgxpool.Pool {
@@ -192,6 +227,18 @@ func migratedPool(t *testing.T, dsn string) *pgxpool.Pool {
 		t.Fatalf("find wallet migrations: %v", err)
 	}
 	for _, name := range files {
+		if strings.HasPrefix(filepath.Base(name), "00004_") {
+			_, err := pool.Exec(t.Context(), `
+				WITH legacy AS (
+					INSERT INTO wallets (user_id, name, currency, balance)
+					VALUES (uuid_generate_v4(), 'Historical fixture', 'RUB', 8.40) RETURNING id
+				)
+				INSERT INTO transactions (wallet_id, type, amount, created_at)
+				SELECT id, 'deposit', 8.40, '2025-01-01'::timestamptz FROM legacy`)
+			if err != nil {
+				t.Fatalf("seed historical operation: %v", err)
+			}
+		}
 		data, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)

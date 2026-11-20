@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Wallet operation event v1",
+  "type": "object",
+  "required": ["version", "operation_id", "wallet_id", "user_id", "currency", "type", "amount", "recorded_at"],
+  "properties": {
+    "version": { "const": 1 },
+    "operation_id": { "type": "string", "format": "uuid" },
+    "wallet_id": { "type": "string", "format": "uuid" },
+    "user_id": { "type": "string", "format": "uuid" },
+    "currency": { "type": "string", "maxLength": 10 },
+    "type": { "enum": ["deposit", "withdrawal"] },
+    "amount": { "type": "string", "pattern": "^-?[0-9]{1,16}(\\.[0-9]{1,2})?$" },
+    "recorded_at": { "type": "string", "format": "date-time" }
+  }
+}

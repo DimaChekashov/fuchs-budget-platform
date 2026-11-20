@@ -22,6 +22,7 @@ const labels = {
     code: "Currency code", precision: "Fractional digits", lastUpdated: "Last updated",
     base: "Base currency", rate: "Rate", quote: "Quote currency", noRates: "No rates available yet.",
     from: "From", to: "To", filter: "Apply", income: "Income", expenses: "Expenses", allWallets: "All wallets",
+    allCurrencies: "All currencies", invalidRange: "Choose a valid date range of up to 366 days.",
   },
   ru: {
     wallets: "Кошельки", dashboard: "Главная", rates: "Курсы валют", login: "Войти",
@@ -40,6 +41,7 @@ const labels = {
     code: "Код валюты", precision: "Знаков после запятой", lastUpdated: "Обновлено",
     base: "Базовая валюта", rate: "Курс", quote: "Валюта котировки", noRates: "Пока нет данных о курсах.",
     from: "С", to: "По", filter: "Применить", income: "Доходы", expenses: "Расходы", allWallets: "Все кошельки",
+    allCurrencies: "Все валюты", invalidRange: "Укажите даты за период до 366 дней.",
   },
 };
 export const dictionary = (language: Language) => labels[language];

@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Fuchs Ledger API
+  version: '1'
+servers:
+  - url: http://localhost:8082
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200': { description: Database ready. }
+        '503': { description: Database unavailable. }
+  /api/v1/reports/summary:
+    get:
+      operationId: getSummary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          description: Inclusive UTC date. Defaults to 29 days before the end date.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC date. Defaults to today. A range may contain up to 366 days.
+          schema: { type: string, format: date }
+        - name: wallet_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: currency
+          in: query
+          schema: { type: string, maxLength: 10 }
+      responses:
+        '200':
+          description: Income and expenses grouped by currency for the authenticated user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        text/plain:
+          schema: { type: string }
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Error:
+      description: Request failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Report:
+      type: object
+      required: [from, to, updated_at, totals]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Most recent time at which Ledger processed an operation for the user.
+        totals:
+          type: array
+          items:
+            type: object
+            required: [currency, income, expenses]
+            properties:
+              currency: { type: string }
+              income: { type: string, description: Exact decimal amount }
+              expenses: { type: string, description: Exact decimal amount }

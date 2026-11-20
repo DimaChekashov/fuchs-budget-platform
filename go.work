@@ -2,6 +2,7 @@ go 1.26.4
 
 use (
     ./services/exchange-service
+    ./services/ledger-service
     ./services/identity-service
     ./services/wallet-service
     ./pkg/jwtmiddleware

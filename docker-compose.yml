@@ -1,8 +1,13 @@
-version: "3.9"
+x-postgres-healthcheck: &postgres-healthcheck
+  test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+  interval: 2s
+  timeout: 3s
+  retries: 20
 
 services:
   postgres-identity:
     image: postgres:16-alpine
+    healthcheck: *postgres-healthcheck
     environment:
       POSTGRES_USER: fuchs
       POSTGRES_PASSWORD: secret
@@ -14,6 +19,7 @@ services:
 
   postgres-wallet:
     image: postgres:16-alpine
+    healthcheck: *postgres-healthcheck
     environment:
       POSTGRES_USER: fuchs
       POSTGRES_PASSWORD: secret
@@ -25,6 +31,7 @@ services:
 
   postgres-ledger:
     image: postgres:16-alpine
+    healthcheck: *postgres-healthcheck
     environment:
       POSTGRES_USER: fuchs
       POSTGRES_PASSWORD: secret
@@ -36,6 +43,7 @@ services:
 
   postgres-exchange:
     image: postgres:16-alpine
+    healthcheck: *postgres-healthcheck
     environment:
       POSTGRES_USER: fuchs
       POSTGRES_PASSWORD: secret
@@ -47,6 +55,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
     ports:
       - "6379:6379"
 
@@ -56,6 +69,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
     ports:
       - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
@@ -63,6 +79,13 @@ services:
       - zookeeper
     ports:
       - "9092:9092"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -74,3 +97,6 @@ volumes:
   postgres_wallet_data:
   postgres_ledger_data:
   postgres_exchange_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:

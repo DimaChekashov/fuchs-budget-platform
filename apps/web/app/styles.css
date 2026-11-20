@@ -92,6 +92,8 @@ select {
 .pagination, .filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
 .filters { margin-bottom: 1rem; }
 .filters label { font-size: .875rem; font-weight: 650; }
+.report-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.report-date { margin-top: .75rem; font-size: .875rem; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th, td { padding: .75rem .65rem; border-bottom: 1px solid var(--line); }
