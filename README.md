@@ -14,6 +14,18 @@
 
 Файл `docker-compose.yml` в корне репозитория описывает локальную инфраструктуру.
 
+## Стиль кода и линтинг
+
+Выполняйте команды из корня репозитория. Для фронтенда один раз установите зависимости командой `npm --prefix frontend ci`.
+
+| Задача | Фронтенд | Бэкенд |
+| --- | --- | --- |
+| Отформатировать исходники | `npm --prefix frontend run format` | `gofmt -w backend` |
+| Проверить форматирование | `npm --prefix frontend run format:check` | `gofmt -l backend` (выводит файлы, требующие форматирования) |
+| Запустить линтер | `npm --prefix frontend run lint` | `go -C backend vet ./services/identity-service/... ./services/wallet-service/... ./services/exchange-service/... ./services/ledger-service/... ./pkg/jwtmiddleware/...` |
+
+Prettier форматирует TypeScript, JSX и CSS. ESLint проверяет правила TypeScript, React и Next.js. Типы в `frontend/src/shared/api/*.generated.ts` обновляет генератор OpenAPI. Для Go используются инструменты из поставки Go. GitHub Actions запускает проверки форматирования и линтинга для обеих частей проекта.
+
 ## Локальный бэкенд
 
 Понадобятся Go 1.26.4, Goose с драйвером PostgreSQL и Docker Compose. Команды ниже выполняются из корня репозитория. Запускайте каждый сервис в отдельном терминале.
@@ -82,7 +94,7 @@ go -C backend test -count=1 ./services/identity-service/... ./services/wallet-se
 
 ## Веб-приложение
 
-Понадобится Node.js 22 или новее. Запустите все HTTP-сервисы и публикацию событий по инструкции выше.
+Для разработки используйте Node.js 22.13+ из ветки 22 или Node.js 24+, как в CI. Запустите все HTTP-сервисы и публикацию событий по инструкции выше.
 
 ```powershell
 Set-Location frontend

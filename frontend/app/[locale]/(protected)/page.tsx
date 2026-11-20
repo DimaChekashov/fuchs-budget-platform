@@ -5,8 +5,16 @@ export default async function DashboardPage({ params, searchParams }: PageProps<
   const { locale } = await params;
   if (!isLanguage(locale)) notFound();
   const query = await searchParams;
-  const get = (key: string) => typeof query[key] === "string" ? query[key] : undefined;
-  return <Dashboard language={locale} filters={{
-    from: get("from"), to: get("to"), wallet_id: get("wallet_id"), currency: get("currency"),
-  }} />;
+  const getFilterValue = (key: string) => (typeof query[key] === "string" ? query[key] : undefined);
+  return (
+    <Dashboard
+      language={locale}
+      filters={{
+        from: getFilterValue("from"),
+        to: getFilterValue("to"),
+        wallet_id: getFilterValue("wallet_id"),
+        currency: getFilterValue("currency"),
+      }}
+    />
+  );
 }

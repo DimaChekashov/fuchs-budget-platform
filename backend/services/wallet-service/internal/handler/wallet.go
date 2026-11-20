@@ -39,16 +39,16 @@ type createWalletRequest struct {
 func (h *WalletHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 
-	var req createWalletRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var requestBody createWalletRequest
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
-	if req.Currency == "" {
-		req.Currency = "RUB"
+	if requestBody.Currency == "" {
+		requestBody.Currency = "RUB"
 	}
 
-	wallet, err := h.walletService.CreateWallet(r.Context(), userID, req.Name, req.Currency, r.Header.Get("Authorization"))
+	wallet, err := h.walletService.CreateWallet(r.Context(), userID, requestBody.Name, requestBody.Currency, r.Header.Get("Authorization"))
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnknownCurrency):
@@ -77,29 +77,29 @@ type operationRequest struct {
 	Description string          `json:"description"`
 }
 
-func (h *WalletHandler) record(w http.ResponseWriter, r *http.Request, run func(context.Context, service.OperationInput) (*domain.Transaction, error)) {
-	var req operationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+func (h *WalletHandler) record(w http.ResponseWriter, r *http.Request, recordOperation func(context.Context, service.OperationInput) (*domain.Transaction, error)) {
+	var requestBody operationRequest
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
 
-	walletID, err := uuid.Parse(req.WalletID)
+	walletID, err := uuid.Parse(requestBody.WalletID)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid wallet_id"})
 		return
 	}
-	var key *string
+	var idempotencyKey *string
 	if values := r.Header.Values("Idempotency-Key"); len(values) > 0 {
 		if len(values) != 1 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": service.ErrInvalidKey.Error()})
 			return
 		}
-		key = &values[0]
+		idempotencyKey = &values[0]
 	}
-	txn, err := run(r.Context(), service.OperationInput{
-		WalletID: walletID, UserID: getUserID(r), Amount: req.Amount,
-		Description: req.Description, IdempotencyKey: key,
+	transaction, err := recordOperation(r.Context(), service.OperationInput{
+		WalletID: walletID, UserID: getUserID(r), Amount: requestBody.Amount,
+		Description: requestBody.Description, IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		switch {
@@ -117,7 +117,7 @@ func (h *WalletHandler) record(w http.ResponseWriter, r *http.Request, run func(
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, txn)
+	writeJSON(w, http.StatusOK, transaction)
 }
 
 func getUserID(r *http.Request) uuid.UUID {

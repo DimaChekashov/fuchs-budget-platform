@@ -18,22 +18,24 @@ func NewTransactionRepository(pool *pgxpool.Pool) *TransactionRepository {
 	return &TransactionRepository{pool: pool}
 }
 
-func (r *TransactionRepository) Create(ctx context.Context, tx pgx.Tx, t *domain.Transaction, key *string) error {
+func (r *TransactionRepository) Create(ctx context.Context, tx pgx.Tx, transaction *domain.Transaction, idempotencyKey *string) error {
 	query := `
   INSERT INTO transactions (wallet_id, type, amount, description, idempotency_key)
   VALUES ($1, $2, $3::text::numeric, $4, $5)
   RETURNING id, created_at
  `
-	return tx.QueryRow(ctx, query, t.WalletID, t.Type, string(t.Amount), t.Description, key).
-		Scan(&t.ID, &t.CreatedAt)
+	return tx.QueryRow(ctx, query,
+		transaction.WalletID, transaction.Type, string(transaction.Amount),
+		transaction.Description, idempotencyKey,
+	).Scan(&transaction.ID, &transaction.CreatedAt)
 }
 
-func (r *TransactionRepository) GetByKey(ctx context.Context, tx pgx.Tx, walletID uuid.UUID, key string) (*domain.Transaction, error) {
+func (r *TransactionRepository) GetByKey(ctx context.Context, tx pgx.Tx, walletID uuid.UUID, idempotencyKey string) (*domain.Transaction, error) {
 	query := `
   SELECT id, wallet_id, type, amount::text, COALESCE(description, ''), created_at
   FROM transactions WHERE wallet_id = $1 AND idempotency_key = $2
  `
-	return scanTransaction(tx.QueryRow(ctx, query, walletID, key))
+	return scanTransaction(tx.QueryRow(ctx, query, walletID, idempotencyKey))
 }
 
 func (r *TransactionRepository) GetHistory(ctx context.Context, walletID, userID uuid.UUID, offset int) ([]*domain.Transaction, error) {
@@ -49,23 +51,26 @@ func (r *TransactionRepository) GetHistory(ctx context.Context, walletID, userID
 	}
 	defer rows.Close()
 
-	txns := make([]*domain.Transaction, 0)
+	transactions := make([]*domain.Transaction, 0)
 	for rows.Next() {
-		t, err := scanTransaction(rows)
+		transaction, err := scanTransaction(rows)
 		if err != nil {
 			return nil, err
 		}
-		txns = append(txns, t)
+		transactions = append(transactions, transaction)
 	}
-	return txns, rows.Err()
+	return transactions, rows.Err()
 }
 
 func scanTransaction(row pgx.Row) (*domain.Transaction, error) {
-	t := &domain.Transaction{}
+	transaction := &domain.Transaction{}
 	var amount string
-	if err := row.Scan(&t.ID, &t.WalletID, &t.Type, &amount, &t.Description, &t.CreatedAt); err != nil {
+	if err := row.Scan(
+		&transaction.ID, &transaction.WalletID, &transaction.Type,
+		&amount, &transaction.Description, &transaction.CreatedAt,
+	); err != nil {
 		return nil, err
 	}
-	t.Amount = json.Number(amount)
-	return t, nil
+	transaction.Amount = json.Number(amount)
+	return transaction, nil
 }

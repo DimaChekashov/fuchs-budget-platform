@@ -12,7 +12,7 @@ import (
 type contextKey string
 
 const UserIDKey contextKey = "user_id"
-const EmailKey  contextKey = "email"
+const EmailKey contextKey = "email"
 
 func Auth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

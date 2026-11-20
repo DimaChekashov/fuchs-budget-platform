@@ -14,8 +14,17 @@ type Props = {
   convert?: "currency";
 };
 
-export default function ActionForm({ children, language, endpoint, label, destination, method = "POST", money, convert }: Props) {
-  const t = dictionary(language);
+export default function ActionForm({
+  children,
+  language,
+  endpoint,
+  label,
+  destination,
+  method = "POST",
+  money,
+  convert,
+}: Props) {
+  const labels = dictionary(language);
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const inFlight = useRef(false);
@@ -30,13 +39,21 @@ export default function ActionForm({ children, language, endpoint, label, destin
     if (money) {
       const amount = String(values.amount).trim().replace(",", ".");
       if (!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amount)) {
-        setError(t.requestFailed);
+        setError(labels.requestFailed);
         return;
       }
-      body = '{"wallet_id":' + JSON.stringify(money.walletID) + ',"description":' +
-        JSON.stringify(values.description || "") + ',"amount":' + amount + "}";
+      body =
+        '{"wallet_id":' +
+        JSON.stringify(money.walletID) +
+        ',"description":' +
+        JSON.stringify(values.description || "") +
+        ',"amount":' +
+        amount +
+        "}";
     }
-    if (convert === "currency") body = JSON.stringify({ ...values, precision: Number(values.precision) });
+    if (convert === "currency") {
+      body = JSON.stringify({ ...values, precision: Number(values.precision) });
+    }
     if (money && retry.current?.body !== body) retry.current = { body, key: crypto.randomUUID() };
     setError("");
     inFlight.current = true;
@@ -51,8 +68,15 @@ export default function ActionForm({ children, language, endpoint, label, destin
         return;
       }
       if (!response.ok) {
-        setError(result.code === "credentials" ? t.invalidCredentials : result.code === "emailTaken" ? t.emailTaken :
-          result.code === "insufficient" ? t.insufficient : t.requestFailed);
+        setError(
+          result.code === "credentials"
+            ? labels.invalidCredentials
+            : result.code === "emailTaken"
+              ? labels.emailTaken
+              : result.code === "insufficient"
+                ? labels.insufficient
+                : labels.requestFailed,
+        );
         return;
       }
       retry.current = null;
@@ -60,15 +84,23 @@ export default function ActionForm({ children, language, endpoint, label, destin
       if (destination) router.replace(destination);
       router.refresh();
     } catch {
-      setError(t.requestFailed);
+      setError(labels.requestFailed);
     } finally {
       inFlight.current = false;
       setPending(false);
     }
   }
-  return <form className="form" onSubmit={submit}>
-    {children}
-    {error && <p className="error" role="alert">{error}</p>}
-    <button className="button" disabled={pending} aria-busy={pending}>{label}</button>
-  </form>;
+  return (
+    <form className="form" onSubmit={submit}>
+      {children}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button className="button" disabled={pending} aria-busy={pending}>
+        {label}
+      </button>
+    </form>
+  );
 }

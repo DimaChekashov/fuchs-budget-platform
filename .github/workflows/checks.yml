@@ -32,6 +32,15 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Check Go formatting and run vet
+        working-directory: backend
+        run: |
+          unformatted=$(gofmt -l .)
+          if [[ -n "$unformatted" ]]; then
+            echo "$unformatted"
+            exit 1
+          fi
+          go vet ./services/identity-service/... ./services/wallet-service/... ./services/exchange-service/... ./services/ledger-service/... ./pkg/jwtmiddleware/...
       - name: Start PostgreSQL, Redis and Kafka
         run: |
           docker compose up -d --wait
@@ -66,6 +75,8 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm run format:check
+          npm run lint
           npm run generate:api
           git diff --exit-code -- src/shared/api
           npm run build

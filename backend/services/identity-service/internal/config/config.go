@@ -21,9 +21,9 @@ func Load() *Config {
 	}
 
 	expiryHours := 24
-	if v := os.Getenv("JWT_EXPIRY_HOURS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			expiryHours = n
+	if configuredHours := os.Getenv("JWT_EXPIRY_HOURS"); configuredHours != "" {
+		if parsedHours, err := strconv.Atoi(configuredHours); err == nil {
+			expiryHours = parsedHours
 		}
 	}
 

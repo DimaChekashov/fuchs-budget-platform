@@ -6,6 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "generate:api": "openapi-typescript ../docs/api/identity-service/openapi.yaml -o src/shared/api/identity.generated.ts && openapi-typescript ../docs/api/wallet-service/openapi.yaml -o src/shared/api/wallet.generated.ts && openapi-typescript ../docs/api/exchange-service/openapi.yaml -o src/shared/api/exchange.generated.ts && openapi-typescript ../docs/api/ledger-service/openapi.yaml -o src/shared/api/ledger.generated.ts",
     "test:e2e": "playwright test"
@@ -20,7 +23,10 @@
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
     "openapi-typescript": "7.13.0",
+    "prettier": "3.10.1",
     "typescript": "5.9.3"
   }
 }
