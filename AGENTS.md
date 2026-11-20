@@ -9,10 +9,12 @@
 ## Backend
 
 - Use Go, PostgreSQL, and Redis in a microservices architecture.
+- Use Docker and Docker Compose to run local infrastructure. Keep service definitions in `docker-compose.yml` and setup instructions in `README.md`.
 - Document each service's API with OpenAPI (Swagger). Update the specification whenever the API contract changes.
 - Use tokens for authentication and authorization.
 - Add or update automated tests whenever backend behavior changes.
-- Define monetary amount handling here once the representation and rounding rules are agreed.
+- For deposits and withdrawals, record the transaction and update the balance in a single PostgreSQL transaction. Enforce the available-balance check even when withdrawals run concurrently.
+- When changing how amounts are represented or rounded, document the currency precision and how existing balances and API clients are affected.
 
 ### Database migrations
 
@@ -29,12 +31,11 @@
 - Use token-based authentication and authorization for protected screens and API requests.
 - Support three responsive layouts for mobile, tablet, and desktop.
 - Cover key user flows with automated tests. Add or update tests whenever frontend behavior changes.
-- Document all frontend setup, startup, and test commands in `README.md`.
 
 ## Working Agreements
 
 - Write all Git commit messages in English.
 - Document commands and procedures for local setup, running services and the frontend, applying migrations, and running checks in `README.md`. Update it when those procedures change.
-- Dependencies — [when new libraries can be added]
-- Compatibility — [which contracts and formats must be preserved]
-- Verification — [which checks are required for each type of change]
+- Prefer existing dependencies when they meet the requirement. Explain the purpose of a new dependency in the change description.
+- Preserve existing API clients when changing a service contract, or document the breaking change and its migration path.
+- Run the relevant checks for each changed service or frontend feature. For wallet balance changes, include tests for rollback and concurrent withdrawals.
