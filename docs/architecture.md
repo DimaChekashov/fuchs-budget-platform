@@ -4,7 +4,7 @@
 
 ## Реализация
 
-В `services/` находятся четыре Go-сервиса и процесс публикации `wallet-relay`. Их контракты OpenAPI лежат в каталогах `api/`. Docker Compose запускает отдельные базы PostgreSQL, Redis и Kafka. Веб-приложение находится в `apps/web`. Команды запуска, миграций и проверок описаны в [README](../README.md).
+В `backend/services/` находятся четыре Go-сервиса и процесс публикации `wallet-relay`. Их контракты OpenAPI лежат в `docs/api/<имя-сервиса>/`. Docker Compose запускает отдельные базы PostgreSQL, Redis и Kafka. Веб-приложение находится в `frontend`. Команды запуска, миграций и проверок описаны в [README](../README.md).
 
 ## Компоненты и данные
 
@@ -39,26 +39,23 @@ flowchart LR
 ## Структура монорепозитория
 
 ```text
-apps/
-  web/                       # Next.js, TypeScript, package.json и package-lock.json
-    app/                     # App Router, layouts, страницы и HTTP-обработчики
-    src/                     # Модули интерфейса по Feature-Sliced Design
-services/
-  identity-service/
-  wallet-service/
-  exchange-service/
-  ledger-service/
-pkg/
-  jwtmiddleware/             # Общая проверка токена для Go-сервисов
-  logger/                    # Каталог общего модуля логирования
+frontend/                    # Next.js, TypeScript и npm
+  app/                       # App Router, страницы и HTTP-обработчики
+  src/                       # Модули интерфейса по Feature-Sliced Design
+  tests/                     # Сквозные тесты Playwright
+backend/
+  services/                  # identity-service, wallet-service, exchange-service, ledger-service
+  pkg/                       # Общие Go-модули jwtmiddleware и logger
+  scripts/                   # Импорт валют существующих кошельков
+  go.work                    # Рабочая область Go-модулей
 docs/
+  api/                       # Контракты HTTP и схема события Wallet по сервисам
   architecture.md
-go.work                      # Рабочая область Go-модулей
 docker-compose.yml           # Состав локального окружения
 README.md                    # Точка входа и команды разработки
 ```
 
-Каждый Go-сервис сохраняет собственные `go.mod`, `main.go`, `internal/` и `migrations/`. Его HTTP-контракт хранится рядом в `api/openapi.yaml`. Внутри сервиса `router` связывает зависимости и маршруты, `handler` разбирает HTTP, `service` задаёт бизнес-правила и границы транзакций, `repository` выполняет запросы, `domain` описывает сущности. Сервисы подключаются к корневому `go.work` по мере появления кода. В `pkg/` выносятся общие технические пакеты. Модели кошелька и записи отчёта принадлежат разным сервисам и могут развиваться независимо.
+Каждый Go-сервис сохраняет собственные `go.mod`, `main.go`, `internal/` и `migrations/`. Его HTTP-контракт хранится в `docs/api/<имя-сервиса>/openapi.yaml`. Внутри сервиса `router` связывает зависимости и маршруты, `handler` разбирает HTTP, `service` задаёт бизнес-правила и границы транзакций, `repository` выполняет запросы, `domain` описывает сущности. Сервисы подключаются к `backend/go.work` по мере появления кода. В `backend/pkg/` выносятся общие технические пакеты. Модели кошелька и записи отчёта принадлежат разным сервисам и могут развиваться независимо.
 
 ## Денежная операция
 
@@ -73,7 +70,7 @@ README.md                    # Точка входа и команды разр�
 
 ## Фронтенд
 
-В `apps/web` серверный слой Next.js связывает интерфейс с Go API. Серверные страницы вызывают типизированные клиенты напрямую. Интерактивные формы обращаются к обработчикам Next.js на том же origin. Эти обработчики передают JWT в `Authorization: Bearer` нужному сервису. Правила владения кошельком, проверки остатка и записи операции исполняет Wallet.
+В `frontend` серверный слой Next.js связывает интерфейс с Go API. Серверные страницы вызывают типизированные клиенты напрямую. Интерактивные формы обращаются к обработчикам Next.js на том же origin. Эти обработчики передают JWT в `Authorization: Bearer` нужному сервису. Правила владения кошельком, проверки остатка и записи операции исполняет Wallet.
 
 | Каталог | Содержимое |
 | --- | --- |

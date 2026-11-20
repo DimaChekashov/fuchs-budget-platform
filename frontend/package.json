@@ -1,0 +1,26 @@
+{
+  "name": "fuchs-budget-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "generate:api": "openapi-typescript ../docs/api/identity-service/openapi.yaml -o src/shared/api/identity.generated.ts && openapi-typescript ../docs/api/wallet-service/openapi.yaml -o src/shared/api/wallet.generated.ts && openapi-typescript ../docs/api/exchange-service/openapi.yaml -o src/shared/api/exchange.generated.ts && openapi-typescript ../docs/api/ledger-service/openapi.yaml -o src/shared/api/ledger.generated.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

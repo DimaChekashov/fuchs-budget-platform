@@ -4,6 +4,16 @@
 
 [Архитектура бэкенда, фронтенда и монорепозитория](docs/architecture.md)
 
+## Структура репозитория
+
+| Каталог | Содержимое |
+| --- | --- |
+| [frontend/](frontend/) | Веб-приложение Next.js, npm-скрипты и сквозные тесты Playwright |
+| [backend/](backend/) | Рабочая область Go, микросервисы и их миграции, общие пакеты и скрипты |
+| [docs/](docs/) | Архитектура, контракты OpenAPI и схема событий кошелька |
+
+Файл `docker-compose.yml` в корне репозитория описывает локальную инфраструктуру.
+
 ## Локальный бэкенд
 
 Понадобятся Go 1.26.4, Goose с драйвером PostgreSQL и Docker Compose. Команды ниже выполняются из корня репозитория. Запускайте каждый сервис в отдельном терминале.
@@ -12,43 +22,43 @@
 docker compose up -d --wait
 docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic wallet.operations.v1 --partitions 3 --replication-factor 1
 
-Copy-Item services/identity-service/.env.example services/identity-service/.env
-Copy-Item services/wallet-service/.env.example services/wallet-service/.env
-Copy-Item services/exchange-service/.env.example services/exchange-service/.env
-Copy-Item services/ledger-service/.env.example services/ledger-service/.env
+Copy-Item backend/services/identity-service/.env.example backend/services/identity-service/.env
+Copy-Item backend/services/wallet-service/.env.example backend/services/wallet-service/.env
+Copy-Item backend/services/exchange-service/.env.example backend/services/exchange-service/.env
+Copy-Item backend/services/ledger-service/.env.example backend/services/ledger-service/.env
 
-goose -dir services/identity-service/migrations postgres 'postgres://fuchs:secret@localhost:5433/identity_db?sslmode=disable' up
-goose -dir services/wallet-service/migrations postgres 'postgres://fuchs:secret@localhost:5434/wallet_db?sslmode=disable' up
-goose -dir services/exchange-service/migrations postgres 'postgres://fuchs:secret@localhost:5436/exchange_db?sslmode=disable' up
-goose -dir services/ledger-service/migrations postgres 'postgres://fuchs:secret@localhost:5435/ledger_db?sslmode=disable' up
-./scripts/import-legacy-currencies.ps1
+goose -dir backend/services/identity-service/migrations postgres 'postgres://fuchs:secret@localhost:5433/identity_db?sslmode=disable' up
+goose -dir backend/services/wallet-service/migrations postgres 'postgres://fuchs:secret@localhost:5434/wallet_db?sslmode=disable' up
+goose -dir backend/services/exchange-service/migrations postgres 'postgres://fuchs:secret@localhost:5436/exchange_db?sslmode=disable' up
+goose -dir backend/services/ledger-service/migrations postgres 'postgres://fuchs:secret@localhost:5435/ledger_db?sslmode=disable' up
+./backend/scripts/import-legacy-currencies.ps1
 ```
 
 Для повторной настройки используйте существующие `.env`. У всех HTTP-сервисов должен совпадать `JWT_SECRET`. Примеры конфигурации предназначены для локального запуска. Укажите `EXCHANGE_SERVICE_URL=http://localhost:8083` в существующем `.env` Wallet после запуска Exchange. До включения этой настройки Wallet сохраняет прежний режим создания кошельков с двумя дробными знаками.
 
 ```powershell
 # Терминал Identity, http://localhost:8080
-Set-Location services/identity-service
+Set-Location backend/services/identity-service
 go run .
 
 # Терминал Wallet, http://localhost:8081
-Set-Location services/wallet-service
+Set-Location backend/services/wallet-service
 go run .
 
 # Терминал Exchange, http://localhost:8083
-Set-Location services/exchange-service
+Set-Location backend/services/exchange-service
 go run .
 
 # Терминал Ledger, http://localhost:8082
-Set-Location services/ledger-service
+Set-Location backend/services/ledger-service
 go run .
 
 # Терминал публикации событий
-Set-Location services/wallet-service
+Set-Location backend/services/wallet-service
 go run ./cmd/wallet-relay
 ```
 
-Контракты HTTP API v1 описаны в [Identity OpenAPI](services/identity-service/api/openapi.yaml), [Wallet OpenAPI](services/wallet-service/api/openapi.yaml), [Exchange OpenAPI](services/exchange-service/api/openapi.yaml) и [Ledger OpenAPI](services/ledger-service/api/openapi.yaml). Формат событий описан в [схеме операции Wallet v1](services/wallet-service/api/wallet-operation-v1.schema.json).
+Контракты HTTP API v1 описаны в [Identity OpenAPI](docs/api/identity-service/openapi.yaml), [Wallet OpenAPI](docs/api/wallet-service/openapi.yaml), [Exchange OpenAPI](docs/api/exchange-service/openapi.yaml) и [Ledger OpenAPI](docs/api/ledger-service/openapi.yaml). Формат событий описан в [схеме операции Wallet v1](docs/api/wallet-service/wallet-operation-v1.schema.json).
 
 ## Денежные операции в API v1
 
@@ -67,7 +77,7 @@ Ledger объединяет доходы и расходы за выбранны
 ```powershell
 $env:WALLET_TEST_DATABASE_URL = 'postgres://fuchs:secret@localhost:5434/wallet_db?sslmode=disable'
 $env:LEDGER_TEST_DATABASE_URL = 'postgres://fuchs:secret@localhost:5435/ledger_db?sslmode=disable'
-go test -count=1 ./services/identity-service/... ./services/wallet-service/... ./services/exchange-service/... ./services/ledger-service/... ./pkg/jwtmiddleware/...
+go -C backend test -count=1 ./services/identity-service/... ./services/wallet-service/... ./services/exchange-service/... ./services/ledger-service/... ./pkg/jwtmiddleware/...
 ```
 
 ## Веб-приложение
@@ -75,7 +85,7 @@ go test -count=1 ./services/identity-service/... ./services/wallet-service/... .
 Понадобится Node.js 22 или новее. Запустите все HTTP-сервисы и публикацию событий по инструкции выше.
 
 ```powershell
-Set-Location apps/web
+Set-Location frontend
 npm ci
 npm run dev
 ```
@@ -83,7 +93,7 @@ npm run dev
 Откройте `http://localhost:3000`. Если API слушают другие адреса, скопируйте `.env.example` в `.env.local` и задайте их там.
 
 ```powershell
-# Из apps/web, Go-сервисы должны быть запущены для сквозных тестов
+# Из frontend, Go-сервисы должны быть запущены для сквозных тестов
 npm run generate:api
 npm run build
 npm run typecheck
