@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/DimaChekashov/fuchs-budget-platform/pkg/jwtmiddleware"
+	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/domain"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/service"
 	"github.com/google/uuid"
 )
@@ -54,51 +56,22 @@ func (h *WalletHandler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, wallet)
 }
 
-type depositRequest struct {
-	WalletID    string  `json:"wallet_id"`
-	Amount      float64 `json:"amount"`
-	Description string  `json:"description"`
-}
-
 func (h *WalletHandler) Deposit(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-
-	var req depositRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
-		return
-	}
-
-	walletID, err := uuid.Parse(req.WalletID)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid wallet_id"})
-		return
-	}
-
-	txn, err := h.walletService.Deposit(r.Context(), service.DepositInput{
-		WalletID:    walletID,
-		UserID:      userID,
-		Amount:      req.Amount,
-		Description: req.Description,
-	})
-	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrWalletNotFound):
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "wallet not found"})
-		case errors.Is(err, service.ErrWrongOwner):
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-		default:
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
-		}
-		return
-	}
-	writeJSON(w, http.StatusOK, txn)
+	h.record(w, r, h.walletService.Deposit)
 }
 
 func (h *WalletHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
+	h.record(w, r, h.walletService.Withdraw)
+}
 
-	var req depositRequest
+type operationRequest struct {
+	WalletID    string          `json:"wallet_id"`
+	Amount      json.RawMessage `json:"amount"`
+	Description string          `json:"description"`
+}
+
+func (h *WalletHandler) record(w http.ResponseWriter, r *http.Request, run func(context.Context, service.OperationInput) (*domain.Transaction, error)) {
+	var req operationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
@@ -109,21 +82,29 @@ func (h *WalletHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid wallet_id"})
 		return
 	}
-
-	txn, err := h.walletService.Withdraw(r.Context(), service.WithdrawInput{
-		WalletID:    walletID,
-		UserID:      userID,
-		Amount:      req.Amount,
-		Description: req.Description,
+	var key *string
+	if values := r.Header.Values("Idempotency-Key"); len(values) > 0 {
+		if len(values) != 1 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": service.ErrInvalidKey.Error()})
+			return
+		}
+		key = &values[0]
+	}
+	txn, err := run(r.Context(), service.OperationInput{
+		WalletID: walletID, UserID: getUserID(r), Amount: req.Amount,
+		Description: req.Description, IdempotencyKey: key,
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInsufficientFunds):
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "insufficient funds"})
+		case errors.Is(err, service.ErrInvalidAmount), errors.Is(err, service.ErrInvalidKey),
+			errors.Is(err, service.ErrInsufficientFunds), errors.Is(err, service.ErrBalanceLimit):
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		case errors.Is(err, service.ErrWalletNotFound):
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "wallet not found"})
 		case errors.Is(err, service.ErrWrongOwner):
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		case errors.Is(err, service.ErrIdempotencyConflict):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 		}

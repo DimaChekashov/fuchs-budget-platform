@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Fuchs Identity API
+  version: '1'
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200':
+          description: Service and database are available.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service]
+                properties:
+                  status: { type: string }
+                  service: { type: string }
+        '503':
+          description: Database unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string }
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '201':
+          description: Registered user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, email]
+                properties:
+                  id: { type: string, format: uuid }
+                  email: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '200':
+          description: Issued access token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token]
+                properties:
+                  access_token: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/v1/users/me:
+    get:
+      operationId: currentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, email]
+                properties:
+                  id: { type: string, format: uuid }
+                  email: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/users:
+    get:
+      operationId: listUsersPlaceholder
+      description: Placeholder route that returns a status message.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Placeholder message.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  requestBodies:
+    Credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email: { type: string }
+              password: { type: string, format: password }
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        text/plain:
+          schema: { type: string }
+    Error:
+      description: Request failed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }

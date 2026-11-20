@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Fuchs Wallet API
+  version: '1'
+servers:
+  - url: http://localhost:8081
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/wallets:
+    get:
+      operationId: listWallets
+      summary: List the authenticated user's wallets
+      responses:
+        '200':
+          description: Wallets ordered by creation time, newest first. Null when no wallets exist.
+          content:
+            application/json:
+              schema:
+                type: array
+                nullable: true
+                items: { $ref: '#/components/schemas/Wallet' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createWallet
+      summary: Create a wallet with a zero balance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 100 }
+                currency: { type: string, maxLength: 10, default: RUB }
+      responses:
+        '201':
+          description: Created wallet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Wallet' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/wallets/deposit:
+    post:
+      operationId: deposit
+      summary: Record a deposit
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/MoneyOperation'
+      responses:
+        '200':
+          $ref: '#/components/responses/Transaction'
+        '400':
+          description: Invalid input or resulting balance exceeds the supported range.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: Idempotency key already used for a different operation on this wallet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/wallets/withdraw:
+    post:
+      operationId: withdraw
+      summary: Record a withdrawal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        $ref: '#/components/requestBodies/MoneyOperation'
+      responses:
+        '200':
+          $ref: '#/components/responses/Transaction'
+        '400':
+          description: Invalid input or insufficient funds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: Idempotency key already used for a different operation on this wallet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: A retry with the same key, operation type, amount and description returns the recorded operation. Keys are scoped to a wallet.
+      schema: { type: string, minLength: 1, maxLength: 128, pattern: '^[!-+\x2D-~]+$' }
+  requestBodies:
+    MoneyOperation:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [wallet_id, amount]
+            properties:
+              wallet_id: { type: string, format: uuid }
+              amount:
+                type: number
+                minimum: 0.01
+                maximum: 9999999999999999.99
+                multipleOf: 0.01
+                description: Positive decimal value in the wallet currency using up to two fractional digits of precision.
+              description: { type: string, maxLength: 255 }
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        text/plain:
+          schema: { type: string }
+    Error:
+      description: Request failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Transaction:
+      description: Recorded operation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Transaction' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Wallet:
+      type: object
+      required: [ID, UserID, Name, Currency, Balance, CreatedAt, UpdatedAt]
+      properties:
+        ID: { type: string, format: uuid }
+        UserID: { type: string, format: uuid }
+        Name: { type: string }
+        Currency: { type: string }
+        Balance: { type: number }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+    Transaction:
+      type: object
+      required: [ID, WalletID, Type, Amount, Description, CreatedAt]
+      properties:
+        ID: { type: string, format: uuid }
+        WalletID: { type: string, format: uuid }
+        Type: { type: string, enum: [deposit, withdrawal] }
+        Amount: { type: number }
+        Description: { type: string }
+        CreatedAt: { type: string, format: date-time }

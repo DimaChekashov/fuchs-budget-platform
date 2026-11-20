@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,7 +19,7 @@ type Transaction struct {
 	ID          uuid.UUID
 	WalletID    uuid.UUID
 	Type        TransactionType
-	Amount      float64
+	Amount      json.Number
 	Description string
 	CreatedAt   time.Time
 }
