@@ -121,6 +121,42 @@ func TestMoneyOperations(t *testing.T) {
 		requireStatus(t, operation("deposit", token, wallet, "0.01", "", ""), http.StatusBadRequest)
 		checkState(t, wallet, "9999999999999999.99", 1)
 	})
+
+	t.Run("reads and renames owned wallets and lists their history", func(t *testing.T) {
+		wallet := newWallet(t)
+		path := "/api/v1/wallets/" + wallet.String()
+		stranger := signToken(t, secret, uuid.New())
+		send := func(method, path, auth, body string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(method, path, strings.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+auth)
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, req)
+			return response
+		}
+		requireStatus(t, send("GET", path, stranger, ""), http.StatusNotFound)
+		requireStatus(t, send("PATCH", path, stranger, `{"name":"Other"}`), http.StatusNotFound)
+		requireStatus(t, send("GET", path+"/transactions", stranger, ""), http.StatusNotFound)
+		requireStatus(t, send("PATCH", path, token, `{"name":" "}`), http.StatusBadRequest)
+		requireStatus(t, send("PATCH", path, token, `{"name":"Savings"}`), http.StatusOK)
+		detail := send("GET", path, token, "")
+		requireStatus(t, detail, http.StatusOK)
+		var renamed domain.Wallet
+		if err := json.Unmarshal(detail.Body.Bytes(), &renamed); err != nil || renamed.Name != "Savings" || renamed.Currency != "RUB" {
+			t.Fatalf("incorrect wallet after rename: %s, %v", detail.Body, err)
+		}
+		requireStatus(t, operation("deposit", token, wallet, "6.10", "income", ""), http.StatusOK)
+		history := send("GET", path+"/transactions", token, "")
+		requireStatus(t, history, http.StatusOK)
+		var entries []domain.Transaction
+		if err := json.Unmarshal(history.Body.Bytes(), &entries); err != nil || len(entries) != 1 || entries[0].Amount != "6.10" {
+			t.Fatalf("incorrect history: %s, %v", history.Body, err)
+		}
+		end := send("GET", path+"/transactions?offset=50", token, "")
+		requireStatus(t, end, http.StatusOK)
+		if strings.TrimSpace(end.Body.String()) != "[]" {
+			t.Fatalf("unexpected later page: %s", end.Body)
+		}
+	})
 }
 
 func migratedPool(t *testing.T, dsn string) *pgxpool.Pool {

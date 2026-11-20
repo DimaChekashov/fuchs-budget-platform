@@ -44,3 +44,26 @@ go run .
 $env:WALLET_TEST_DATABASE_URL = 'postgres://fuchs:secret@localhost:5434/wallet_db?sslmode=disable'
 go test -count=1 ./services/identity-service/... ./services/wallet-service/... ./pkg/jwtmiddleware/...
 ```
+
+## Веб-приложение
+
+Понадобится Node.js 22 или новее. Запустите Identity и Wallet по инструкции выше.
+
+```powershell
+Set-Location apps/web
+npm ci
+npm run dev
+```
+
+Откройте `http://localhost:3000`. Если API слушают другие адреса, скопируйте `.env.example` в `.env.local` и задайте их там.
+
+```powershell
+# Из apps/web, Go-сервисы должны быть запущены для сквозных тестов
+npm run generate:api
+npm run build
+npm run typecheck
+npx playwright install chromium
+npm run test:e2e
+```
+
+Команда `generate:api` обновляет типы клиента из OpenAPI. Playwright проверяет сценарии на телефоне, планшете и десктопе.

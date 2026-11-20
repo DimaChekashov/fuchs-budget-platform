@@ -93,10 +93,63 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/Error' }
+  /api/v1/wallets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/WalletID'
+    get:
+      operationId: getWallet
+      responses:
+        '200': { $ref: '#/components/responses/Wallet' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+    patch:
+      operationId: renameWallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '200': { $ref: '#/components/responses/Wallet' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /api/v1/wallets/{id}/transactions:
+    get:
+      operationId: walletHistory
+      parameters:
+        - $ref: '#/components/parameters/WalletID'
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Up to 50 operations, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Transaction' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
   parameters:
+    WalletID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -121,6 +174,11 @@ components:
                 description: Positive decimal value in the wallet currency using up to two fractional digits of precision.
               description: { type: string, maxLength: 255 }
   responses:
+    Wallet:
+      description: The authenticated user's wallet.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Wallet' }
     Unauthorized:
       description: Missing or invalid bearer token.
       content:
@@ -159,7 +217,7 @@ components:
       properties:
         ID: { type: string, format: uuid }
         WalletID: { type: string, format: uuid }
-        Type: { type: string, enum: [deposit, withdrawal] }
+        Type: { type: string, enum: [deposit, withdrawal, transfer] }
         Amount: { type: number }
         Description: { type: string }
         CreatedAt: { type: string, format: date-time }

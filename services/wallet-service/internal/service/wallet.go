@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/domain"
 	"github.com/DimaChekashov/fuchs-budget-platform/services/wallet-service/internal/repository"
@@ -25,6 +26,7 @@ var (
 	ErrInvalidKey          = errors.New("invalid idempotency key")
 	ErrIdempotencyConflict = errors.New("idempotency key already used for a different operation")
 	ErrBalanceLimit        = errors.New("balance exceeds the supported limit")
+	ErrInvalidName         = errors.New("wallet name must contain 1 to 100 characters")
 )
 
 type WalletService struct {
@@ -47,6 +49,33 @@ func (s *WalletService) CreateWallet(ctx context.Context, userID uuid.UUID, name
 
 func (s *WalletService) GetUserWallets(ctx context.Context, userID uuid.UUID) ([]*domain.Wallet, error) {
 	return s.walletRepo.GetByUserID(ctx, userID)
+}
+
+func (s *WalletService) GetWallet(ctx context.Context, walletID, userID uuid.UUID) (*domain.Wallet, error) {
+	wallet, err := s.walletRepo.GetOwned(ctx, walletID, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrWalletNotFound
+	}
+	return wallet, err
+}
+
+func (s *WalletService) RenameWallet(ctx context.Context, walletID, userID uuid.UUID, name string) (*domain.Wallet, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.ContainsRune(name, 0) || utf8.RuneCountInString(name) > 100 {
+		return nil, ErrInvalidName
+	}
+	wallet, err := s.walletRepo.Rename(ctx, walletID, userID, name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrWalletNotFound
+	}
+	return wallet, err
+}
+
+func (s *WalletService) GetHistory(ctx context.Context, walletID, userID uuid.UUID, offset int) ([]*domain.Transaction, error) {
+	if _, err := s.GetWallet(ctx, walletID, userID); err != nil {
+		return nil, err
+	}
+	return s.txnRepo.GetHistory(ctx, walletID, userID, offset)
 }
 
 type OperationInput struct {

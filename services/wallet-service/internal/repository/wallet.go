@@ -43,6 +43,26 @@ func (r *WalletRepository) Exists(ctx context.Context, tx pgx.Tx, id uuid.UUID) 
 	return exists, err
 }
 
+func (r *WalletRepository) GetOwned(ctx context.Context, id, userID uuid.UUID) (*domain.Wallet, error) {
+	return scanWallet(r.pool.QueryRow(ctx, `
+		SELECT id, user_id, name, currency, balance::text, created_at, updated_at
+		FROM wallets WHERE id = $1 AND user_id = $2`, id, userID))
+}
+
+func (r *WalletRepository) Rename(ctx context.Context, id, userID uuid.UUID, name string) (*domain.Wallet, error) {
+	return scanWallet(r.pool.QueryRow(ctx, `
+		UPDATE wallets SET name = $3, updated_at = NOW() WHERE id = $1 AND user_id = $2
+		RETURNING id, user_id, name, currency, balance::text, created_at, updated_at`, id, userID, name))
+}
+
+func scanWallet(row pgx.Row) (*domain.Wallet, error) {
+	w := &domain.Wallet{}
+	var balance string
+	err := row.Scan(&w.ID, &w.UserID, &w.Name, &w.Currency, &balance, &w.CreatedAt, &w.UpdatedAt)
+	w.Balance = json.Number(balance)
+	return w, err
+}
+
 func (r *WalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Wallet, error) {
 	query := `
 		SELECT id, user_id, name, currency, balance::text, created_at, updated_at
@@ -57,12 +77,10 @@ func (r *WalletRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([
 
 	var wallets []*domain.Wallet
 	for rows.Next() {
-		w := &domain.Wallet{}
-		var balance string
-		if err := rows.Scan(&w.ID, &w.UserID, &w.Name, &w.Currency, &balance, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		w, err := scanWallet(rows)
+		if err != nil {
 			return nil, err
 		}
-		w.Balance = json.Number(balance)
 		wallets = append(wallets, w)
 	}
 	return wallets, rows.Err()

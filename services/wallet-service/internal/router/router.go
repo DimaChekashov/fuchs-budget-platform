@@ -25,6 +25,9 @@ func New(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	mux.Handle("POST /api/v1/wallets", auth(http.HandlerFunc(walletHandler.CreateWallet)))
 	mux.Handle("POST /api/v1/wallets/deposit", auth(http.HandlerFunc(walletHandler.Deposit)))
 	mux.Handle("POST /api/v1/wallets/withdraw", auth(http.HandlerFunc(walletHandler.Withdraw)))
+	mux.Handle("GET /api/v1/wallets/{id}", auth(http.HandlerFunc(walletHandler.GetWallet)))
+	mux.Handle("PATCH /api/v1/wallets/{id}", auth(http.HandlerFunc(walletHandler.RenameWallet)))
+	mux.Handle("GET /api/v1/wallets/{id}/transactions", auth(http.HandlerFunc(walletHandler.GetHistory)))
 
 	return mux
 }
